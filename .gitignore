@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Node
+node_modules/
+dist/
+
+# Mac
+.DS_Store
+
+# Model files (large, don't commit)
+*.safetensors
+*.ckpt
+*.pt
