@@ -179,12 +179,13 @@ export default function App() {
             <div>
               <h1 style={{
                 fontFamily: 'Outfit, sans-serif', fontWeight: 800,
-                fontSize: '17px', color: '#f0eeff', lineHeight: 1.1,
+                fontSize: '19px', color: '#f0eeff', lineHeight: 1.1,
+                letterSpacing: '0.04em',
               }}>
-                AI Cartoon Generator
+                TOONIFY
               </h1>
               <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '1px' }}>
-                Stable Diffusion + IP-Adapter Face Lock
+                AI Cartoon & Avatar Generator
               </p>
             </div>
           </div>
@@ -208,7 +209,7 @@ export default function App() {
           marginBottom: '28px', letterSpacing: '0.05em',
         }}>
           <span style={{ fontSize: '14px' }}>✨</span>
-          AI-POWERED PHOTO CARTOONIZER · MILESTONE 2
+          TOONIFY AI · PHOTO TO CARTOON
         </div>
 
         <h2 style={{
@@ -233,7 +234,7 @@ export default function App() {
           color: 'rgba(255,255,255,0.45)', fontSize: '17px', lineHeight: 1.65,
           maxWidth: '520px', margin: '0 auto',
         }}>
-          Upload any portrait, choose from 5 art styles, and keep your face identity consistent with IP-Adapter AI.
+          Upload any portrait, choose from 5 art styles, and keep your face identity consistent with Toonify AI.
         </p>
       </section>
 
@@ -395,7 +396,7 @@ export default function App() {
         padding: '24px 32px',
         textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '12px',
       }}>
-        AI Cartoon Generator · Milestone 2 · FastAPI + React + Stable Diffusion + IP-Adapter
+        TOONIFY AI · FastAPI + React + Stable Diffusion + IP-Adapter
       </footer>
     </div>
   )
