@@ -1,29 +1,22 @@
 /**
- * ResultViewer.jsx
- * Side-by-side before/after comparison with download button.
- * Uses a slider to reveal original vs cartoon.
+ * ResultViewer.jsx — Premium redesign
+ * Side-by-side before/after with draggable reveal slider
  */
 import { useState, useRef } from 'react'
 
 export default function ResultViewer({ originalUrl, resultUrl, onReset }) {
-  const [sliderX, setSliderX] = useState(50) // percent
+  const [sliderX, setSliderX] = useState(50)
   const containerRef = useRef(null)
   const dragging = useRef(false)
 
   const getPercent = (clientX) => {
     const rect = containerRef.current.getBoundingClientRect()
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width))
-    return (x / rect.width) * 100
+    return Math.max(2, Math.min(((clientX - rect.left) / rect.width) * 100, 98))
   }
 
-  const onMouseMove = (e) => {
+  const onPointerMove = (e) => {
     if (!dragging.current) return
     setSliderX(getPercent(e.clientX))
-  }
-
-  const onTouchMove = (e) => {
-    if (!dragging.current) return
-    setSliderX(getPercent(e.touches[0].clientX))
   }
 
   const handleDownload = () => {
@@ -34,94 +27,138 @@ export default function ResultViewer({ originalUrl, resultUrl, onReset }) {
   }
 
   return (
-    <div className="w-full flex flex-col gap-4 animate-[fadeInUp_0.5s_ease_forwards]">
-      {/* Labels */}
-      <div className="flex justify-between text-xs text-white/40 font-inter px-1">
-        <span>Original</span>
-        <span className="text-purple-400 font-semibold">← Drag to compare →</span>
-        <span>Cartoon</span>
-      </div>
+    <div style={{ width: '100%', animation: 'fadeUp 0.5s ease forwards' }}>
 
-      {/* Comparison slider */}
+      {/* Comparison viewer */}
       <div
-        id="result-viewer"
         ref={containerRef}
-        className="relative w-full h-80 rounded-2xl overflow-hidden cursor-col-resize select-none border border-white/8 shadow-2xl"
-        onMouseDown={() => (dragging.current = true)}
-        onMouseUp={() => (dragging.current = false)}
-        onMouseLeave={() => (dragging.current = false)}
-        onMouseMove={onMouseMove}
-        onTouchStart={() => (dragging.current = true)}
-        onTouchEnd={() => (dragging.current = false)}
-        onTouchMove={onTouchMove}
+        id="result-viewer"
+        onPointerDown={(e) => { dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId) }}
+        onPointerUp={() => (dragging.current = false)}
+        onPointerMove={onPointerMove}
+        style={{
+          position: 'relative', width: '100%', height: '380px',
+          borderRadius: '20px', overflow: 'hidden',
+          cursor: 'col-resize', userSelect: 'none',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+        }}
       >
-        {/* Cartoon (bottom layer, full width) */}
+        {/* Cartoon — full background */}
         <img
           src={resultUrl}
           alt="Cartoon result"
-          className="absolute inset-0 w-full h-full object-cover"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         />
 
-        {/* Original (top layer, clipped) */}
-        <div
-          className="absolute inset-0 overflow-hidden"
-          style={{ width: `${sliderX}%` }}
-        >
+        {/* Original — clipped to left side */}
+        <div style={{ position: 'absolute', inset: 0, width: `${sliderX}%`, overflow: 'hidden' }}>
           <img
             src={originalUrl}
             alt="Original photo"
-            className="absolute inset-0 h-full object-cover"
-            style={{ width: containerRef.current?.offsetWidth + 'px' }}
+            style={{
+              position: 'absolute', top: 0, left: 0, height: '100%', objectFit: 'cover',
+              width: containerRef.current ? `${containerRef.current.offsetWidth}px` : '100%',
+            }}
           />
         </div>
 
-        {/* Slider handle */}
-        <div
-          className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)]"
-          style={{ left: `${sliderX}%` }}
-        >
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-xl flex items-center justify-center">
-            <span className="text-xs text-gray-700 font-bold select-none">⇔</span>
+        {/* Labels */}
+        <div style={{
+          position: 'absolute', top: '16px', left: '16px',
+          background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: '8px', padding: '4px 12px',
+          fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.8)',
+          pointerEvents: 'none',
+        }}>
+          Original
+        </div>
+        <div style={{
+          position: 'absolute', top: '16px', right: '16px',
+          background: 'rgba(124,58,237,0.55)', backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(167,139,250,0.3)',
+          borderRadius: '8px', padding: '4px 12px',
+          fontSize: '12px', fontWeight: 600, color: '#c4b5fd',
+          pointerEvents: 'none',
+        }}>
+          Cartoon ✨
+        </div>
+
+        {/* Slider line */}
+        <div style={{
+          position: 'absolute', top: 0, bottom: 0, left: `${sliderX}%`,
+          width: '2px',
+          background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.9) 20%, rgba(255,255,255,0.9) 80%, transparent)',
+          boxShadow: '0 0 10px rgba(255,255,255,0.5)',
+          pointerEvents: 'none',
+        }}>
+          {/* Handle */}
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '40px', height: '40px', borderRadius: '50%',
+            background: 'rgba(255,255,255,0.95)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '14px', color: '#4c1d95', fontWeight: 800,
+            pointerEvents: 'none',
+          }}>
+            ⇔
           </div>
+        </div>
+
+        {/* Bottom drag hint */}
+        <div style={{
+          position: 'absolute', bottom: '16px', left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '99px', padding: '4px 16px',
+          fontSize: '11px', color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+        }}>
+          ← Drag to compare →
         </div>
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-3">
+      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
         <button
           id="download-btn"
           onClick={handleDownload}
-          className="
-            flex-1 py-3 rounded-xl font-semibold text-sm
-            bg-gradient-to-r from-purple-600 to-indigo-500
-            text-white hover:shadow-[0_0_25px_rgba(139,92,246,0.5)]
-            hover:scale-[1.02] active:scale-[0.98]
-            transition-all duration-200 flex items-center justify-center gap-2
-          "
+          style={{
+            flex: 1, padding: '14px 24px',
+            borderRadius: '14px', border: 'none',
+            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+            color: '#fff', fontSize: '15px', fontWeight: 700,
+            fontFamily: 'Outfit, sans-serif',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            boxShadow: '0 4px 24px rgba(124,58,237,0.45)',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 32px rgba(124,58,237,0.65)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 4px 24px rgba(124,58,237,0.45)'; e.currentTarget.style.transform = 'translateY(0)' }}
         >
-          <span>⬇️</span> Download Cartoon
+          ⬇️ Download Cartoon
         </button>
 
         <button
           id="reset-btn"
           onClick={onReset}
-          className="
-            px-6 py-3 rounded-xl font-semibold text-sm
-            border border-white/10 text-white/60
-            hover:border-white/20 hover:text-white hover:bg-white/5
-            transition-all duration-200
-          "
+          style={{
+            padding: '14px 24px', borderRadius: '14px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(255,255,255,0.04)',
+            color: 'rgba(255,255,255,0.55)', fontSize: '14px', fontWeight: 600,
+            fontFamily: 'Outfit, sans-serif',
+            cursor: 'pointer', transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
         >
           Try Another
         </button>
       </div>
-
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   )
 }

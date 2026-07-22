@@ -1,6 +1,5 @@
 /**
- * UploadZone.jsx
- * Drag-and-drop + click-to-browse image upload area.
+ * UploadZone.jsx — Premium redesign
  */
 import { useRef, useState, useCallback } from 'react'
 
@@ -13,36 +12,18 @@ export default function UploadZone({ onImageSelect, preview }) {
   const [error, setError] = useState('')
 
   const validate = (file) => {
-    if (!ACCEPTED.includes(file.type)) {
-      setError('Please upload a JPEG, PNG, or WebP image.')
-      return false
-    }
-    if (file.size > MAX_MB * 1024 * 1024) {
-      setError(`File too large. Max ${MAX_MB} MB.`)
-      return false
-    }
-    setError('')
-    return true
+    if (!ACCEPTED.includes(file.type)) { setError('Please upload a JPEG, PNG, or WebP image.'); return false }
+    if (file.size > MAX_MB * 1024 * 1024) { setError(`Max ${MAX_MB} MB.`); return false }
+    setError(''); return true
   }
 
   const handleFile = useCallback((file) => {
-    if (!file) return
-    if (!validate(file)) return
-    const url = URL.createObjectURL(file)
-    onImageSelect(file, url)
+    if (!file || !validate(file)) return
+    onImageSelect(file, URL.createObjectURL(file))
   }, [onImageSelect])
 
-  const onDrop = (e) => {
-    e.preventDefault()
-    setDragging(false)
-    const file = e.dataTransfer.files?.[0]
-    handleFile(file)
-  }
-
-  const onInputChange = (e) => {
-    const file = e.target.files?.[0]
-    handleFile(file)
-  }
+  const onDrop = (e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files?.[0]) }
+  const onInputChange = (e) => handleFile(e.target.files?.[0])
 
   return (
     <div className="w-full">
@@ -52,65 +33,79 @@ export default function UploadZone({ onImageSelect, preview }) {
         onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
-        className={`
-          relative w-full rounded-2xl border-2 border-dashed
-          transition-all duration-300 cursor-pointer overflow-hidden
-          flex flex-col items-center justify-center
-          ${preview ? 'h-72' : 'h-64'}
-          ${dragging
-            ? 'border-purple-400 bg-purple-500/10 shadow-[0_0_30px_rgba(139,92,246,0.3)]'
-            : 'border-white/10 bg-white/[0.02] hover:border-purple-500/50 hover:bg-purple-500/5'
-          }
-        `}
+        style={{
+          borderRadius: '20px',
+          transition: 'all 0.3s ease',
+          cursor: 'pointer',
+          position: 'relative',
+          overflow: 'hidden',
+          height: preview ? '320px' : '220px',
+          border: dragging
+            ? '2px solid rgba(139,92,246,0.8)'
+            : '2px dashed rgba(255,255,255,0.1)',
+          background: dragging
+            ? 'rgba(139,92,246,0.08)'
+            : preview ? 'transparent' : 'rgba(255,255,255,0.02)',
+          boxShadow: dragging ? '0 0 40px rgba(139,92,246,0.25), inset 0 0 40px rgba(139,92,246,0.05)' : 'none',
+        }}
       >
         {preview ? (
-          /* ---- Preview ---- */
           <>
-            <img
-              src={preview}
-              alt="Uploaded preview"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition-opacity duration-200">
-              <div className="text-center">
-                <p className="text-white font-semibold text-sm">Click to change</p>
-                <p className="text-white/60 text-xs mt-1">or drag a new image</p>
+            <img src={preview} alt="Uploaded preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {/* Overlay on hover */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 50%, transparent 100%)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
+              padding: '24px', opacity: 0, transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.opacity = 1}
+            onMouseLeave={e => e.currentTarget.style.opacity = 0}
+            >
+              <div style={{
+                background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px',
+                padding: '8px 20px', color: '#fff', fontSize: '13px', fontWeight: 600,
+              }}>
+                📂 Click to change photo
               </div>
             </div>
           </>
         ) : (
-          /* ---- Empty state ---- */
-          <div className="text-center px-6 py-8 select-none">
-            <div className="text-5xl mb-4 transition-transform duration-300 hover:scale-110">
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            height: '100%', gap: '12px', padding: '32px',
+          }}>
+            {/* Animated icon */}
+            <div style={{
+              width: '72px', height: '72px', borderRadius: '50%',
+              background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(244,114,182,0.15))',
+              border: '1px solid rgba(139,92,246,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '30px',
+              animation: 'pulse-ring 3s ease-in-out infinite',
+            }}>
               📸
             </div>
-            <p className="text-white font-semibold text-base font-outfit">
-              Drop your photo here
-            </p>
-            <p className="text-white/40 text-sm mt-1">
-              or click to browse
-            </p>
-            <p className="text-white/25 text-xs mt-4">
-              JPEG · PNG · WebP · max {MAX_MB} MB
-            </p>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ color: '#e2e0ff', fontFamily: 'Outfit, sans-serif', fontWeight: 700, fontSize: '17px' }}>
+                Drop your photo here
+              </p>
+              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '13px', marginTop: '4px' }}>
+                or click to browse — JPEG · PNG · WebP · max {MAX_MB} MB
+              </p>
+            </div>
           </div>
         )}
       </div>
 
       {error && (
-        <p className="text-red-400 text-sm mt-2 flex items-center gap-1">
-          <span>⚠️</span> {error}
+        <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          ⚠️ {error}
         </p>
       )}
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ACCEPTED.join(',')}
-        className="hidden"
-        onChange={onInputChange}
-        id="file-input"
-      />
+      <input ref={inputRef} type="file" accept={ACCEPTED.join(',')} style={{ display: 'none' }} onChange={onInputChange} id="file-input" />
     </div>
   )
 }

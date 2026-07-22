@@ -20,6 +20,7 @@ class HealthResponse(BaseModel):
     model_loaded: bool
     device: str
     mock_mode: bool
+    ip_adapter_loaded: bool = False
 
 
 class CartoonizeResponse(BaseModel):

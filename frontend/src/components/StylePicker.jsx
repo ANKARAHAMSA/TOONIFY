@@ -1,46 +1,143 @@
 /**
- * StylePicker.jsx
- * Grid of style cards. Each card shows emoji, name, description.
- * Selected card gets a glowing purple border.
+ * StylePicker.jsx — Premium redesign
+ * Large, color-coded style cards with per-style gradients and glow
  */
+
+const STYLE_THEMES = {
+  disney: {
+    gradient: 'linear-gradient(135deg, rgba(251,191,36,0.15) 0%, rgba(249,115,22,0.1) 100%)',
+    glow: 'rgba(251,191,36,0.35)',
+    border: 'rgba(251,191,36,0.25)',
+    selectedBorder: 'rgba(251,191,36,0.7)',
+    accent: '#fbbf24',
+    bg: 'rgba(251,191,36,0.08)',
+  },
+  anime: {
+    gradient: 'linear-gradient(135deg, rgba(56,189,248,0.15) 0%, rgba(99,102,241,0.1) 100%)',
+    glow: 'rgba(56,189,248,0.35)',
+    border: 'rgba(56,189,248,0.25)',
+    selectedBorder: 'rgba(56,189,248,0.7)',
+    accent: '#38bdf8',
+    bg: 'rgba(56,189,248,0.08)',
+  },
+  ghibli: {
+    gradient: 'linear-gradient(135deg, rgba(52,211,153,0.15) 0%, rgba(16,185,129,0.08) 100%)',
+    glow: 'rgba(52,211,153,0.35)',
+    border: 'rgba(52,211,153,0.25)',
+    selectedBorder: 'rgba(52,211,153,0.7)',
+    accent: '#34d399',
+    bg: 'rgba(52,211,153,0.08)',
+  },
+  comic: {
+    gradient: 'linear-gradient(135deg, rgba(251,113,133,0.15) 0%, rgba(244,63,94,0.1) 100%)',
+    glow: 'rgba(251,113,133,0.35)',
+    border: 'rgba(251,113,133,0.25)',
+    selectedBorder: 'rgba(251,113,133,0.7)',
+    accent: '#fb7185',
+    bg: 'rgba(251,113,133,0.08)',
+  },
+  pixar: {
+    gradient: 'linear-gradient(135deg, rgba(167,139,250,0.2) 0%, rgba(236,72,153,0.1) 100%)',
+    glow: 'rgba(167,139,250,0.4)',
+    border: 'rgba(167,139,250,0.3)',
+    selectedBorder: 'rgba(167,139,250,0.8)',
+    accent: '#a78bfa',
+    bg: 'rgba(167,139,250,0.1)',
+  },
+}
+
 export default function StylePicker({ styles, selected, onSelect, disabled }) {
   return (
-    <div className="w-full">
-      <h2 className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-3 font-inter">
-        Choose a style
-      </h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <div style={{ width: '100%' }}>
+      <p style={{
+        fontSize: '11px', fontWeight: 600, letterSpacing: '0.12em',
+        color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase',
+        marginBottom: '14px', fontFamily: 'Inter, sans-serif',
+      }}>
+        Choose your art style
+      </p>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(5, 1fr)',
+        gap: '10px',
+      }}>
         {styles.map((style) => {
+          const theme = STYLE_THEMES[style.key] || STYLE_THEMES.pixar
           const isSelected = selected === style.key
+
           return (
             <button
               key={style.key}
               id={`style-${style.key}`}
               onClick={() => !disabled && onSelect(style.key)}
               disabled={disabled}
-              className={`
-                relative group flex flex-col items-center gap-2
-                rounded-xl border p-4 text-center
-                transition-all duration-300 cursor-pointer
-                ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.03]'}
-                ${isSelected
-                  ? 'border-purple-500 bg-purple-500/15 shadow-[0_0_20px_rgba(139,92,246,0.4)]'
-                  : 'border-white/8 bg-white/[0.03] hover:border-purple-500/40 hover:bg-purple-500/5'
+              style={{
+                position: 'relative',
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                gap: '10px', padding: '18px 10px',
+                borderRadius: '16px',
+                border: `1.5px solid ${isSelected ? theme.selectedBorder : theme.border}`,
+                background: isSelected ? theme.bg : 'rgba(255,255,255,0.02)',
+                backgroundImage: isSelected ? theme.gradient : 'none',
+                boxShadow: isSelected ? `0 0 24px ${theme.glow}, inset 0 0 20px ${theme.bg}` : 'none',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.5 : 1,
+                transition: 'all 0.25s ease',
+                outline: 'none',
+              }}
+              onMouseEnter={e => {
+                if (!disabled && !isSelected) {
+                  e.currentTarget.style.background = theme.bg
+                  e.currentTarget.style.borderColor = theme.border
+                  e.currentTarget.style.boxShadow = `0 0 16px ${theme.glow.replace('0.35', '0.2')}`
+                  e.currentTarget.style.transform = 'translateY(-2px)'
                 }
-              `}
+              }}
+              onMouseLeave={e => {
+                if (!disabled && !isSelected) {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
+                  e.currentTarget.style.borderColor = theme.border
+                  e.currentTarget.style.boxShadow = 'none'
+                  e.currentTarget.style.transform = 'translateY(0)'
+                }
+              }}
             >
-              {/* Selected indicator ring */}
+              {/* Selected dot */}
               {isSelected && (
-                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(139,92,246,0.9)]" />
+                <span style={{
+                  position: 'absolute', top: '8px', right: '8px',
+                  width: '7px', height: '7px', borderRadius: '50%',
+                  background: theme.accent,
+                  boxShadow: `0 0 8px ${theme.accent}`,
+                }} />
               )}
 
-              <span className="text-3xl leading-none">{style.emoji}</span>
+              {/* Emoji with colored backdrop */}
+              <div style={{
+                width: '48px', height: '48px', borderRadius: '12px',
+                background: isSelected ? `${theme.bg}` : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${isSelected ? theme.border : 'rgba(255,255,255,0.06)'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '24px',
+              }}>
+                {style.emoji}
+              </div>
 
-              <div>
-                <p className={`text-sm font-semibold transition-colors ${isSelected ? 'text-purple-300' : 'text-white/90'}`}>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{
+                  fontFamily: 'Outfit, sans-serif',
+                  fontWeight: 700, fontSize: '13px',
+                  color: isSelected ? theme.accent : 'rgba(255,255,255,0.85)',
+                  transition: 'color 0.2s',
+                  lineHeight: 1.2,
+                }}>
                   {style.label}
                 </p>
-                <p className="text-white/35 text-xs mt-0.5 leading-tight">
+                <p style={{
+                  fontSize: '10.5px', color: 'rgba(255,255,255,0.3)',
+                  marginTop: '3px', lineHeight: 1.3,
+                }}>
                   {style.description}
                 </p>
               </div>

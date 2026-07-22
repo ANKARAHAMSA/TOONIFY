@@ -1,6 +1,5 @@
 /**
- * App.jsx — AI Cartoon Generator
- * Main application shell.
+ * App.jsx — AI Cartoon Generator (Milestone 2 Redesign)
  */
 import { useState, useEffect, useCallback } from 'react'
 import { getHealth, getStyles, cartoonize } from './api'
@@ -9,25 +8,81 @@ import StylePicker from './components/StylePicker'
 import GenerateButton from './components/GenerateButton'
 import ResultViewer from './components/ResultViewer'
 import LoadingOverlay from './components/LoadingOverlay'
+import FaceLock from './components/FaceLock'
 
-// ─── Status badge ──────────────────────────────────────────────────────────
+// ─── Status Badge ─────────────────────────────────────────────────────────
 function StatusBadge({ health }) {
   if (!health) return null
-  const ok = health.model_loaded
+  const isMock = health.mock_mode
+  const isOk = health.model_loaded
+  const isIPAdapter = health.ip_adapter_loaded
+
   return (
-    <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full border
-      ${ok
-        ? 'text-green-400 border-green-400/20 bg-green-400/5'
-        : 'text-yellow-400 border-yellow-400/20 bg-yellow-400/5'
-      }`}
-    >
-      <span className={`w-1.5 h-1.5 rounded-full ${ok ? 'bg-green-400' : 'bg-yellow-400'} animate-pulse`} />
-      {health.mock_mode ? 'Mock mode' : ok ? `Ready · ${health.device}` : 'Loading model…'}
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '7px',
+        padding: '5px 14px', borderRadius: '99px', fontSize: '12px', fontWeight: 600,
+        fontFamily: 'Inter, sans-serif',
+        color: isMock ? '#fbbf24' : isOk ? '#4ade80' : '#fbbf24',
+        border: `1px solid ${isMock ? 'rgba(251,191,36,0.2)' : isOk ? 'rgba(74,222,128,0.2)' : 'rgba(251,191,36,0.2)'}`,
+        background: isMock ? 'rgba(251,191,36,0.06)' : isOk ? 'rgba(74,222,128,0.06)' : 'rgba(251,191,36,0.06)',
+      }}>
+        <span style={{
+          width: '7px', height: '7px', borderRadius: '50%',
+          background: isMock ? '#fbbf24' : isOk ? '#4ade80' : '#fbbf24',
+          boxShadow: `0 0 6px ${isMock ? '#fbbf24' : isOk ? '#4ade80' : '#fbbf24'}`,
+          animation: 'pulse-ring 2s ease-in-out infinite',
+        }} />
+        {isMock ? '⚡ Mock mode' : isOk ? `✓ ${health.device}` : 'Loading model…'}
+      </div>
+
+      {isIPAdapter && (
+        <span style={{
+          padding: '4px 10px', borderRadius: '99px', fontSize: '11px', fontWeight: 600,
+          background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)',
+          color: '#c4b5fd',
+        }}>
+          🔒 IP-Adapter Active
+        </span>
+      )}
     </div>
   )
 }
 
-// ─── Main App ──────────────────────────────────────────────────────────────
+// ─── Step indicator ──────────────────────────────────────────────────────
+function StepBadge({ number, label, active, done }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '8px',
+    }}>
+      <div style={{
+        width: '26px', height: '26px', borderRadius: '50%',
+        background: done
+          ? 'linear-gradient(135deg, #7c3aed, #4f46e5)'
+          : active
+            ? 'rgba(139,92,246,0.2)'
+            : 'rgba(255,255,255,0.06)',
+        border: `1.5px solid ${done || active ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '12px', fontWeight: 700,
+        color: done ? '#fff' : active ? '#a78bfa' : 'rgba(255,255,255,0.3)',
+        flexShrink: 0,
+        transition: 'all 0.3s ease',
+      }}>
+        {done ? '✓' : number}
+      </div>
+      <span style={{
+        fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+        color: done ? '#a78bfa' : active ? '#e0dbff' : 'rgba(255,255,255,0.3)',
+        transition: 'color 0.3s ease',
+      }}>
+        {label}
+      </span>
+    </div>
+  )
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────
 export default function App() {
   const [health, setHealth] = useState(null)
   const [styles, setStyles] = useState([])
@@ -35,144 +90,312 @@ export default function App() {
 
   const [imageFile, setImageFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
-  const [resultUrl, setResultUrl] = useState(null)
 
+  // Face lock state
+  const [faceLockEnabled, setFaceLockEnabled] = useState(true)
+  const [faceFile, setFaceFile] = useState(null)
+  const [facePreviewUrl, setFacePreviewUrl] = useState(null)
+
+  const [resultUrl, setResultUrl] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // ── Startup: fetch health + styles ──────────────────────────────────────
   useEffect(() => {
     getHealth()
       .then(setHealth)
       .catch(() => setHealth({ status: 'error', model_loaded: false, device: 'none', mock_mode: false }))
-
     getStyles()
       .then(setStyles)
-      .catch(() => console.warn('Could not fetch styles from API — using fallback'))
+      .catch(() => {})
   }, [])
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleImageSelect = useCallback((file, url) => {
-    setImageFile(file)
-    setPreviewUrl(url)
-    setResultUrl(null)
-    setError('')
+    setImageFile(file); setPreviewUrl(url); setResultUrl(null); setError('')
+  }, [])
+
+  const handleFaceSelect = useCallback((file, url) => {
+    setFaceFile(file); setFacePreviewUrl(url)
   }, [])
 
   const handleGenerate = async () => {
     if (!imageFile || !selectedStyle) return
-    setLoading(true)
-    setError('')
-    setResultUrl(null)
+    setLoading(true); setError(''); setResultUrl(null)
+
+    // Use specific faceFile if uploaded, else fall back to main imageFile when faceLock is enabled
+    const effectiveFaceFile = faceLockEnabled ? (faceFile || imageFile) : null
 
     try {
-      const url = await cartoonize(imageFile, selectedStyle)
-      setResultUrl(url)
+      const result = await cartoonize(imageFile, selectedStyle, {
+        faceFile: effectiveFaceFile,
+      })
+      setResultUrl(result)
     } catch (err) {
-      const msg = err.response?.data?.detail || err.message || 'Generation failed. Is the backend running?'
-      setError(msg)
+      setError(err.response?.data?.detail || err.message || 'Generation failed. Is the backend running?')
     } finally {
       setLoading(false)
     }
   }
 
   const handleReset = () => {
-    setImageFile(null)
-    setPreviewUrl(null)
-    setResultUrl(null)
-    setError('')
+    setImageFile(null); setPreviewUrl(null); setResultUrl(null); setError('')
+    setFaceFile(null); setFacePreviewUrl(null)
   }
 
   const selectedStyleLabel = styles.find(s => s.key === selectedStyle)?.label || selectedStyle
+  const step1Done = !!imageFile
+  const step2Done = step1Done
+  const step3Active = step1Done
   const canGenerate = !!imageFile && !loading
 
-  // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-20 backdrop-blur-md bg-[#0d0d14]/80 border-b border-white/[0.06]">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🎨</span>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Ambient BG */}
+      <div className="bg-ambient" />
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        background: 'rgba(8,8,16,0.75)',
+      }}>
+        <div style={{
+          maxWidth: '1100px', margin: '0 auto',
+          padding: '0 32px', height: '64px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          {/* Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '38px', height: '38px', borderRadius: '10px',
+              background: 'linear-gradient(135deg, rgba(124,58,237,0.6), rgba(99,102,241,0.4))',
+              border: '1px solid rgba(139,92,246,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '18px',
+              boxShadow: '0 0 16px rgba(124,58,237,0.3)',
+            }}>
+              🎨
+            </div>
             <div>
-              <h1 className="text-lg font-bold text-white font-outfit leading-tight">
+              <h1 style={{
+                fontFamily: 'Outfit, sans-serif', fontWeight: 800,
+                fontSize: '17px', color: '#f0eeff', lineHeight: 1.1,
+              }}>
                 AI Cartoon Generator
               </h1>
-              <p className="text-white/35 text-xs">Powered by Stable Diffusion</p>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '1px' }}>
+                Stable Diffusion + IP-Adapter Face Lock
+              </p>
             </div>
           </div>
+
           <StatusBadge health={health} />
         </div>
       </header>
 
-      {/* ── Hero ──────────────────────────────────────────────────────── */}
-      <section className="pt-14 pb-8 text-center px-6">
-        <h2 className="text-4xl sm:text-5xl font-extrabold font-outfit bg-gradient-to-r from-purple-300 via-indigo-300 to-pink-300 bg-clip-text text-transparent leading-tight">
-          Turn your photo into<br />a cartoon masterpiece
+      {/* ── Hero ────────────────────────────────────────────────────────── */}
+      <section style={{
+        textAlign: 'center', padding: '72px 32px 48px',
+        maxWidth: '800px', margin: '0 auto', width: '100%',
+      }}>
+        {/* Label pill */}
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: '8px',
+          padding: '6px 18px', borderRadius: '99px',
+          border: '1px solid rgba(139,92,246,0.3)',
+          background: 'rgba(139,92,246,0.08)',
+          fontSize: '12px', fontWeight: 600, color: '#a78bfa',
+          marginBottom: '28px', letterSpacing: '0.05em',
+        }}>
+          <span style={{ fontSize: '14px' }}>✨</span>
+          AI-POWERED PHOTO CARTOONIZER · MILESTONE 2
+        </div>
+
+        <h2 style={{
+          fontFamily: 'Outfit, sans-serif', fontWeight: 900,
+          fontSize: 'clamp(36px, 6vw, 64px)', lineHeight: 1.05,
+          marginBottom: '20px',
+        }}>
+          <span style={{
+            background: 'linear-gradient(135deg, #c4b5fd 0%, #818cf8 45%, #f472b6 100%)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}>
+            Turn your photo
+          </span>
+          <br />
+          <span style={{ color: '#f0eeff' }}>
+            into cartoon art
+          </span>
         </h2>
-        <p className="text-white/45 text-base mt-4 max-w-xl mx-auto">
-          Upload a photo, choose an art style, and watch AI transform it in seconds.
-          Built with Stable Diffusion img2img.
+
+        <p style={{
+          color: 'rgba(255,255,255,0.45)', fontSize: '17px', lineHeight: 1.65,
+          maxWidth: '520px', margin: '0 auto',
+        }}>
+          Upload any portrait, choose from 5 art styles, and keep your face identity consistent with IP-Adapter AI.
         </p>
       </section>
 
-      {/* ── Main card ─────────────────────────────────────────────────── */}
-      <main className="flex-1 max-w-2xl w-full mx-auto px-6 pb-16 flex flex-col gap-8">
-        {/* Upload */}
-        <section>
-          <UploadZone
-            onImageSelect={handleImageSelect}
-            preview={previewUrl}
-          />
-        </section>
+      {/* ── Main workspace ──────────────────────────────────────────────── */}
+      <main style={{
+        flex: 1, maxWidth: '960px', width: '100%', margin: '0 auto',
+        padding: '0 32px 80px',
+        display: 'flex', flexDirection: 'column', gap: '0',
+      }}>
 
-        {/* Style picker */}
-        {styles.length > 0 && (
-          <section>
-            <StylePicker
-              styles={styles}
-              selected={selectedStyle}
-              onSelect={setSelectedStyle}
-              disabled={loading}
-            />
-          </section>
-        )}
+        {/* Glass card */}
+        <div style={{
+          borderRadius: '28px',
+          border: '1px solid rgba(255,255,255,0.07)',
+          background: 'rgba(255,255,255,0.025)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          overflow: 'hidden',
+          boxShadow: '0 32px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.07)',
+        }}>
 
-        {/* Generate / Loading / Result */}
-        <section className="flex flex-col gap-4">
-          {!resultUrl && !loading && (
-            <GenerateButton
-              onClick={handleGenerate}
-              loading={loading}
-              disabled={!canGenerate}
-            />
-          )}
+          {/* Steps header bar */}
+          <div style={{
+            padding: '20px 32px',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            display: 'flex', gap: '32px', alignItems: 'center',
+          }}>
+            <StepBadge number="1" label="Upload photo" active={!step1Done} done={step1Done} />
+            <div style={{ width: '24px', height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+            <StepBadge number="2" label="Choose style" active={step1Done && !resultUrl} done={!!resultUrl} />
+            <div style={{ width: '24px', height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+            <StepBadge number="3" label="Generate" active={step3Active && !resultUrl} done={!!resultUrl} />
+          </div>
 
-          {loading && <LoadingOverlay style={selectedStyleLabel} />}
+          {/* Content area */}
+          <div style={{ padding: '32px' }}>
 
-          {resultUrl && (
-            <ResultViewer
-              originalUrl={previewUrl}
-              resultUrl={resultUrl}
-              onReset={handleReset}
-            />
-          )}
-
-          {error && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-red-300 text-sm flex gap-2">
-              <span className="text-red-400 text-base">⚠️</span>
-              <div>
-                <p className="font-semibold">Generation failed</p>
-                <p className="text-red-300/70 mt-0.5">{error}</p>
+            {/* ── If result: show full-width viewer ── */}
+            {resultUrl && (
+              <div style={{ animation: 'fadeUp 0.5s ease' }}>
+                <ResultViewer
+                  originalUrl={previewUrl}
+                  resultUrl={resultUrl}
+                  onReset={handleReset}
+                />
               </div>
-            </div>
-          )}
-        </section>
+            )}
+
+            {/* ── If loading ── */}
+            {loading && <LoadingOverlay style={selectedStyleLabel} />}
+
+            {/* ── Upload + style + generate ── */}
+            {!resultUrl && !loading && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', alignItems: 'start' }}>
+
+                {/* Left: upload + face lock */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div>
+                    <p style={{
+                      fontSize: '11px', fontWeight: 600, letterSpacing: '0.12em',
+                      color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase',
+                      marginBottom: '12px', fontFamily: 'Inter, sans-serif',
+                    }}>
+                      Your photo
+                    </p>
+                    <UploadZone onImageSelect={handleImageSelect} preview={previewUrl} />
+                  </div>
+
+                  {/* Face Lock control */}
+                  {imageFile && (
+                    <FaceLock
+                      enabled={faceLockEnabled}
+                      onToggle={setFaceLockEnabled}
+                      faceFile={faceFile}
+                      facePreview={facePreviewUrl}
+                      onFaceSelect={handleFaceSelect}
+                      disabled={loading}
+                    />
+                  )}
+                </div>
+
+                {/* Right: style + generate */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {/* Style picker */}
+                  {styles.length > 0 && (
+                    <StylePicker
+                      styles={styles}
+                      selected={selectedStyle}
+                      onSelect={setSelectedStyle}
+                      disabled={loading}
+                    />
+                  )}
+
+                  {/* Generate button */}
+                  <div>
+                    <GenerateButton
+                      onClick={handleGenerate}
+                      loading={loading}
+                      disabled={!canGenerate}
+                    />
+                    {!imageFile && (
+                      <p style={{
+                        textAlign: 'center', marginTop: '10px',
+                        fontSize: '12px', color: 'rgba(255,255,255,0.2)',
+                      }}>
+                        Upload a photo first to enable
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div style={{
+                marginTop: '20px', padding: '16px 20px', borderRadius: '14px',
+                border: '1px solid rgba(248,113,113,0.2)',
+                background: 'rgba(248,113,113,0.06)',
+                display: 'flex', gap: '12px', alignItems: 'flex-start',
+              }}>
+                <span style={{ fontSize: '18px', flexShrink: 0 }}>⚠️</span>
+                <div>
+                  <p style={{ fontWeight: 600, color: '#fca5a5', fontSize: '14px' }}>Generation failed</p>
+                  <p style={{ color: 'rgba(252,165,165,0.6)', fontSize: '13px', marginTop: '3px' }}>{error}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Feature strip */}
+        {!resultUrl && (
+          <div style={{
+            display: 'flex', justifyContent: 'center', gap: '40px',
+            marginTop: '36px', flexWrap: 'wrap',
+          }}>
+            {[
+              { icon: '🎨', text: '5 Cartoon Styles' },
+              { icon: '🔒', text: 'IP-Adapter Face Lock' },
+              { icon: '⚡', text: 'AI-Powered' },
+              { icon: '⬇️', text: 'Free Download' },
+            ].map(({ icon, text }) => (
+              <div key={text} style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                color: 'rgba(255,255,255,0.3)', fontSize: '13px', fontWeight: 500,
+              }}>
+                <span style={{ fontSize: '16px' }}>{icon}</span>
+                {text}
+              </div>
+            ))}
+          </div>
+        )}
       </main>
 
-      {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="border-t border-white/[0.06] py-6 text-center text-white/25 text-xs">
-        AI Cartoon Generator · Milestone 1 · Built with FastAPI + React + Stable Diffusion
+      {/* ── Footer ──────────────────────────────────────────────────────── */}
+      <footer style={{
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        padding: '24px 32px',
+        textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '12px',
+      }}>
+        AI Cartoon Generator · Milestone 2 · FastAPI + React + Stable Diffusion + IP-Adapter
       </footer>
     </div>
   )

@@ -1,6 +1,5 @@
 /**
- * GenerateButton.jsx
- * Gradient CTA button with shimmer animation while loading.
+ * GenerateButton.jsx — Premium redesign
  */
 export default function GenerateButton({ onClick, loading, disabled }) {
   return (
@@ -8,60 +7,72 @@ export default function GenerateButton({ onClick, loading, disabled }) {
       id="generate-btn"
       onClick={onClick}
       disabled={disabled || loading}
-      className={`
-        relative w-full rounded-xl py-4 px-8
-        font-outfit font-bold text-base tracking-wide
-        overflow-hidden transition-all duration-300
-        ${disabled || loading
-          ? 'opacity-50 cursor-not-allowed bg-white/10 text-white/40'
-          : `
-            bg-gradient-to-r from-purple-600 via-indigo-500 to-purple-600
-            bg-[length:200%_100%] text-white
-            hover:bg-right-top hover:shadow-[0_0_35px_rgba(139,92,246,0.55)]
-            hover:scale-[1.01] active:scale-[0.99]
-            animate-gradient
-          `
+      style={{
+        width: '100%', padding: '16px 32px',
+        borderRadius: '16px',
+        fontFamily: 'Outfit, sans-serif',
+        fontWeight: 800, fontSize: '16px',
+        letterSpacing: '0.02em',
+        border: 'none', cursor: disabled || loading ? 'not-allowed' : 'pointer',
+        position: 'relative', overflow: 'hidden',
+        transition: 'all 0.3s ease',
+        background: disabled || loading
+          ? 'rgba(255,255,255,0.06)'
+          : 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 30%, #4f46e5 70%, #7c3aed 100%)',
+        backgroundSize: disabled || loading ? 'auto' : '300% 100%',
+        animation: (!disabled && !loading) ? 'gradientShift 4s ease infinite' : 'none',
+        color: disabled || loading ? 'rgba(255,255,255,0.25)' : '#fff',
+        boxShadow: disabled || loading
+          ? 'none'
+          : '0 4px 30px rgba(124,58,237,0.5), 0 1px 0 rgba(255,255,255,0.1) inset',
+        transform: 'translateY(0)',
+      }}
+      onMouseEnter={e => {
+        if (!disabled && !loading) {
+          e.currentTarget.style.transform = 'translateY(-2px)'
+          e.currentTarget.style.boxShadow = '0 8px 40px rgba(124,58,237,0.65), 0 1px 0 rgba(255,255,255,0.15) inset'
         }
-      `}
-      style={
-        (!disabled && !loading)
-          ? { backgroundSize: '200% 100%', animation: 'gradientShift 3s ease infinite' }
-          : {}
-      }
+      }}
+      onMouseLeave={e => {
+        if (!disabled && !loading) {
+          e.currentTarget.style.transform = 'translateY(0)'
+          e.currentTarget.style.boxShadow = '0 4px 30px rgba(124,58,237,0.5), 0 1px 0 rgba(255,255,255,0.1) inset'
+        }
+      }}
+      onMouseDown={e => { if (!disabled && !loading) e.currentTarget.style.transform = 'translateY(1px)' }}
+      onMouseUp={e => { if (!disabled && !loading) e.currentTarget.style.transform = 'translateY(-2px)' }}
     >
       {loading ? (
-        <span className="flex items-center justify-center gap-3">
-          <span className="inline-block w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          Generating…
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+          <span style={{
+            width: '20px', height: '20px',
+            border: '2.5px solid rgba(255,255,255,0.2)',
+            borderTopColor: '#fff',
+            borderRadius: '50%',
+            display: 'inline-block',
+            animation: 'spin 0.8s linear infinite',
+          }} />
+          Generating your cartoon…
         </span>
       ) : (
-        <span className="flex items-center justify-center gap-2">
-          <span>✨</span>
-          Cartoonize
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '20px' }}>✨</span>
+          Cartoonize My Photo
         </span>
       )}
 
-      {/* Shimmer sweep while loading */}
-      {loading && (
-        <span
-          className="absolute inset-0 -translate-x-full animate-shimmer"
-          style={{
-            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
-            animation: 'shimmer 1.5s infinite',
-          }}
-        />
+      {/* Shimmer sweep */}
+      {!disabled && !loading && (
+        <span style={{
+          position: 'absolute', top: 0, left: 0, bottom: 0, width: '60px',
+          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)',
+          animation: 'shimmer 3s ease-in-out infinite',
+          pointerEvents: 'none',
+        }} />
       )}
 
       <style>{`
-        @keyframes gradientShift {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        @keyframes shimmer {
-          0%   { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </button>
   )

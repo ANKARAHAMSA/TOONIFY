@@ -11,7 +11,7 @@ const client = axios.create({
 
 /**
  * Fetch health status of the backend.
- * @returns {{ status, model_loaded, device, mock_mode }}
+ * @returns {{ status, model_loaded, device, mock_mode, ip_adapter_loaded }}
  */
 export async function getHealth() {
   const { data } = await client.get('/health')
@@ -32,6 +32,7 @@ export async function getStyles() {
  * @param {File}   imageFile     - The uploaded image file
  * @param {string} styleKey      - Style preset key (e.g. "disney")
  * @param {object} [options]     - Optional overrides
+ * @param {File}   [options.faceFile] - Optional face reference for IP-Adapter face lock
  * @param {number} [options.strength=0.72]
  * @param {number} [options.guidanceScale=7.5]
  * @param {number} [options.numSteps=30]
@@ -40,6 +41,7 @@ export async function getStyles() {
  */
 export async function cartoonize(imageFile, styleKey, options = {}, onProgress) {
   const {
+    faceFile = null,
     strength = 0.72,
     guidanceScale = 7.5,
     numSteps = 30,
@@ -51,6 +53,10 @@ export async function cartoonize(imageFile, styleKey, options = {}, onProgress) 
   form.append('strength', String(strength))
   form.append('guidance_scale', String(guidanceScale))
   form.append('num_steps', String(numSteps))
+
+  if (faceFile) {
+    form.append('face_image', faceFile)
+  }
 
   const response = await client.post('/cartoonize', form, {
     responseType: 'blob',
