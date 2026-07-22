@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: toonify-backend
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    envVars:
+      - key: MOCK_MODE
+        value: "true"
+      - key: PORT
+        value: "10000"
+      - key: ALLOWED_ORIGINS
+        sync: false   # Set this in Render dashboard to your Vercel URL
+    healthCheckPath: /health
+    autoDeploy: true

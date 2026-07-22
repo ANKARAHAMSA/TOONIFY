@@ -1,11 +1,18 @@
+# TOONIFY Backend — Pinned Requirements
+# Render free tier uses MOCK_MODE=true (no GPU inference)
+# For GPU inference, use the Colab notebook or a GPU cloud provider
+
 fastapi==0.111.0
 uvicorn[standard]==0.30.1
 python-multipart==0.0.9
 Pillow==10.3.0
+python-dotenv==1.0.1
+pydantic==2.7.1
+
+# SD inference (optional — only used when MOCK_MODE=false)
+# These are heavy; Render free tier will skip loading them in mock mode
 torch>=2.1.0
 diffusers>=0.27.0
 transformers>=4.40.0
 accelerate>=0.30.0
 safetensors>=0.4.3
-python-dotenv==1.0.1
-pydantic==2.7.1

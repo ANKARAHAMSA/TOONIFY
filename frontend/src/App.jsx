@@ -1,14 +1,15 @@
 /**
- * App.jsx — AI Cartoon Generator (Milestone 2 Redesign)
+ * App.jsx — TOONIFY (Phase D: Strength Slider + Compare Mode)
  */
 import { useState, useEffect, useCallback } from 'react'
 import { getHealth, getStyles, cartoonize } from './api'
 import UploadZone from './components/UploadZone'
 import StylePicker from './components/StylePicker'
 import GenerateButton from './components/GenerateButton'
-import ResultViewer from './components/ResultViewer'
 import LoadingOverlay from './components/LoadingOverlay'
 import FaceLock from './components/FaceLock'
+import StrengthSlider from './components/StrengthSlider'
+import CompareSlider from './components/CompareSlider'
 
 // ─── Status Badge ─────────────────────────────────────────────────────────
 function StatusBadge({ health }) {
@@ -96,6 +97,9 @@ export default function App() {
   const [faceFile, setFaceFile] = useState(null)
   const [facePreviewUrl, setFacePreviewUrl] = useState(null)
 
+  // Phase D — Style strength (0–100 → 0.40–0.90)
+  const [strengthPct, setStrengthPct] = useState(65)
+
   const [resultUrl, setResultUrl] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -123,10 +127,13 @@ export default function App() {
 
     // Use specific faceFile if uploaded, else fall back to main imageFile when faceLock is enabled
     const effectiveFaceFile = faceLockEnabled ? (faceFile || imageFile) : null
+    // Map slider 0–100 → strength 0.40–0.90
+    const strength = parseFloat((0.40 + (strengthPct / 100) * 0.50).toFixed(2))
 
     try {
       const result = await cartoonize(imageFile, selectedStyle, {
         faceFile: effectiveFaceFile,
+        strength,
       })
       setResultUrl(result)
     } catch (err) {
@@ -135,6 +142,16 @@ export default function App() {
       setLoading(false)
     }
   }
+
+  // Phase D — download handler
+  const handleDownload = useCallback((which) => {
+    const dl = (url, name) => {
+      const a = document.createElement('a')
+      a.href = url; a.download = name; a.click()
+    }
+    if (which === 'original' || which === 'both') dl(previewUrl, 'original.jpg')
+    if (which === 'cartoon'  || which === 'both') dl(resultUrl,  'toonify_cartoon.png')
+  }, [previewUrl, resultUrl])
 
   const handleReset = () => {
     setImageFile(null); setPreviewUrl(null); setResultUrl(null); setError('')
@@ -272,14 +289,31 @@ export default function App() {
           {/* Content area */}
           <div style={{ padding: '32px' }}>
 
-            {/* ── If result: show full-width viewer ── */}
+            {/* ── If result: show compare slider ── */}
             {resultUrl && (
               <div style={{ animation: 'fadeUp 0.5s ease' }}>
-                <ResultViewer
-                  originalUrl={previewUrl}
-                  resultUrl={resultUrl}
-                  onReset={handleReset}
+                <CompareSlider
+                  originalSrc={previewUrl}
+                  cartoonSrc={resultUrl}
+                  onDownload={handleDownload}
                 />
+                <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    style={{
+                      padding: '10px 28px', borderRadius: '99px', cursor: 'pointer',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)',
+                      fontSize: '13px', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                  >
+                    ↩ New photo
+                  </button>
+                </div>
               </div>
             )}
 
@@ -316,7 +350,7 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Right: style + generate */}
+                {/* Right: style + strength + generate */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   {/* Style picker */}
                   {styles.length > 0 && (
@@ -327,6 +361,12 @@ export default function App() {
                       disabled={loading}
                     />
                   )}
+
+                  {/* Phase D — Strength slider */}
+                  <StrengthSlider
+                    value={strengthPct}
+                    onChange={setStrengthPct}
+                  />
 
                   {/* Generate button */}
                   <div>
@@ -375,7 +415,8 @@ export default function App() {
             {[
               { icon: '🎨', text: '5 Cartoon Styles' },
               { icon: '🔒', text: 'IP-Adapter Face Lock' },
-              { icon: '⚡', text: 'AI-Powered' },
+              { icon: '🎚️', text: 'Style Strength Slider' },
+              { icon: '↔️', text: 'Before/After Compare' },
               { icon: '⬇️', text: 'Free Download' },
             ].map(({ icon, text }) => (
               <div key={text} style={{
@@ -396,7 +437,7 @@ export default function App() {
         padding: '24px 32px',
         textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '12px',
       }}>
-        TOONIFY AI · FastAPI + React + Stable Diffusion + IP-Adapter
+        TOONIFY AI · FastAPI + React + Stable Diffusion + IP-Adapter + LoRA
       </footer>
     </div>
   )
