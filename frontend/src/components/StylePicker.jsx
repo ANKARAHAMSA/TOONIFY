@@ -1,6 +1,6 @@
 /**
- * StylePicker.jsx — Premium redesign
- * Large, color-coded style cards with per-style gradients and glow
+ * StylePicker.jsx — Milestone 3 Redesign
+ * Supports custom LoRA styles (Arcane & Claymation) + 5 core styles
  */
 
 const STYLE_THEMES = {
@@ -19,6 +19,24 @@ const STYLE_THEMES = {
     selectedBorder: 'rgba(56,189,248,0.7)',
     accent: '#38bdf8',
     bg: 'rgba(56,189,248,0.08)',
+  },
+  arcane: {
+    gradient: 'linear-gradient(135deg, rgba(168,85,247,0.25) 0%, rgba(236,72,153,0.15) 100%)',
+    glow: 'rgba(168,85,247,0.45)',
+    border: 'rgba(168,85,247,0.35)',
+    selectedBorder: 'rgba(168,85,247,0.85)',
+    accent: '#c084fc',
+    bg: 'rgba(168,85,247,0.12)',
+    badge: 'Custom LoRA',
+  },
+  claymation: {
+    gradient: 'linear-gradient(135deg, rgba(249,115,22,0.25) 0%, rgba(217,119,6,0.15) 100%)',
+    glow: 'rgba(249,115,22,0.45)',
+    border: 'rgba(249,115,22,0.35)',
+    selectedBorder: 'rgba(249,115,22,0.85)',
+    accent: '#fb923c',
+    bg: 'rgba(249,115,22,0.12)',
+    badge: 'Custom LoRA',
   },
   ghibli: {
     gradient: 'linear-gradient(135deg, rgba(52,211,153,0.15) 0%, rgba(16,185,129,0.08) 100%)',
@@ -54,12 +72,12 @@ export default function StylePicker({ styles, selected, onSelect, disabled }) {
         color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase',
         marginBottom: '14px', fontFamily: 'Inter, sans-serif',
       }}>
-        Choose your art style
+        Choose your art style ({styles.length} styles available)
       </p>
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(5, 1fr)',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
         gap: '10px',
       }}>
         {styles.map((style) => {
@@ -75,7 +93,7 @@ export default function StylePicker({ styles, selected, onSelect, disabled }) {
               style={{
                 position: 'relative',
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
-                gap: '10px', padding: '18px 10px',
+                gap: '10px', padding: '16px 8px',
                 borderRadius: '16px',
                 border: `1.5px solid ${isSelected ? theme.selectedBorder : theme.border}`,
                 background: isSelected ? theme.bg : 'rgba(255,255,255,0.02)',
@@ -103,6 +121,18 @@ export default function StylePicker({ styles, selected, onSelect, disabled }) {
                 }
               }}
             >
+              {/* Custom LoRA badge */}
+              {theme.badge && (
+                <span style={{
+                  position: 'absolute', top: '6px', left: '50%', transform: 'translateX(-50%)',
+                  background: theme.accent, color: '#000', fontSize: '8px', fontWeight: 800,
+                  padding: '1px 6px', borderRadius: '99px', textTransform: 'uppercase',
+                  letterSpacing: '0.05em', whiteSpace: 'nowrap',
+                }}>
+                  {theme.badge}
+                </span>
+              )}
+
               {/* Selected dot */}
               {isSelected && (
                 <span style={{
@@ -115,11 +145,12 @@ export default function StylePicker({ styles, selected, onSelect, disabled }) {
 
               {/* Emoji with colored backdrop */}
               <div style={{
-                width: '48px', height: '48px', borderRadius: '12px',
+                width: '44px', height: '44px', borderRadius: '12px',
+                marginTop: theme.badge ? '8px' : '0',
                 background: isSelected ? `${theme.bg}` : 'rgba(255,255,255,0.04)',
                 border: `1px solid ${isSelected ? theme.border : 'rgba(255,255,255,0.06)'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '24px',
+                fontSize: '22px',
               }}>
                 {style.emoji}
               </div>
@@ -127,7 +158,7 @@ export default function StylePicker({ styles, selected, onSelect, disabled }) {
               <div style={{ textAlign: 'center' }}>
                 <p style={{
                   fontFamily: 'Outfit, sans-serif',
-                  fontWeight: 700, fontSize: '13px',
+                  fontWeight: 700, fontSize: '12.5px',
                   color: isSelected ? theme.accent : 'rgba(255,255,255,0.85)',
                   transition: 'color 0.2s',
                   lineHeight: 1.2,
@@ -135,7 +166,7 @@ export default function StylePicker({ styles, selected, onSelect, disabled }) {
                   {style.label}
                 </p>
                 <p style={{
-                  fontSize: '10.5px', color: 'rgba(255,255,255,0.3)',
+                  fontSize: '10px', color: 'rgba(255,255,255,0.3)',
                   marginTop: '3px', lineHeight: 1.3,
                 }}>
                   {style.description}

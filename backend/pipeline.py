@@ -1,7 +1,7 @@
 """
 Stable Diffusion img2img pipeline wrapper.
 Handles device detection (CUDA / MPS / CPU), lazy loading,
-and optional IP-Adapter face consistency (Milestone 2).
+IP-Adapter face consistency (Milestone 2), and Custom LoRA models (Milestone 3).
 """
 import os
 import io
@@ -13,7 +13,7 @@ from PIL import Image, ImageFilter, ImageEnhance
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Style presets
+# Style presets (Includes Custom LoRA styles: Arcane & Claymation)
 # ---------------------------------------------------------------------------
 STYLES: dict[str, dict] = {
     "disney": {
@@ -22,6 +22,7 @@ STYLES: dict[str, dict] = {
         "description": "Vibrant, expressive Disney animation style",
         "prompt_modifier": "modern disney animation style, 3d digital artwork, expressive character, vibrant colors, smooth shading, cinematic lighting, masterpiece",
         "emoji": "🏰",
+        "lora": None,
     },
     "anime": {
         "key": "anime",
@@ -29,6 +30,23 @@ STYLES: dict[str, dict] = {
         "description": "Clean, detailed Japanese anime aesthetic",
         "prompt_modifier": "anime style, studio quality, detailed eyes, clean lines, cel shaded, makoto shinkai aesthetic, masterpiece",
         "emoji": "⛩️",
+        "lora": None,
+    },
+    "arcane": {
+        "key": "arcane",
+        "label": "Arcane Painterly",
+        "description": "Exclusive painterly style with dramatic neon lighting",
+        "prompt_modifier": "in arcane_toonify style, painterly brushstrokes, dramatic side lighting, high contrast, masterpiece portrait, 8k",
+        "emoji": "🔮",
+        "lora": "arcane_toonify.safetensors",
+    },
+    "claymation": {
+        "key": "claymation",
+        "label": "3D Claymation",
+        "description": "Tactile stop-motion clay art style",
+        "prompt_modifier": "in clay_toonify style, claymation artwork, tactile clay texture, plasticine, stop motion aesthetic, handmade character",
+        "emoji": "🧱",
+        "lora": "clay_toonify.safetensors",
     },
     "ghibli": {
         "key": "ghibli",
@@ -36,6 +54,7 @@ STYLES: dict[str, dict] = {
         "description": "Soft, painterly Ghibli-inspired artwork",
         "prompt_modifier": "studio ghibli style, painted, whimsical, soft colors, hand-drawn, miyazaki art, anime background",
         "emoji": "🌿",
+        "lora": None,
     },
     "comic": {
         "key": "comic",
@@ -43,6 +62,7 @@ STYLES: dict[str, dict] = {
         "description": "Bold lines and vibrant comic book panels",
         "prompt_modifier": "comic book illustration style, bold black ink outlines, halftone patterns, vibrant colors, dynamic pop art, Marvel comic style",
         "emoji": "💥",
+        "lora": None,
     },
     "pixar": {
         "key": "pixar",
@@ -50,6 +70,7 @@ STYLES: dict[str, dict] = {
         "description": "Warm, expressive Pixar-style 3D look",
         "prompt_modifier": "pixar 3d animation style, cute character, warm lighting, subsurface scattering, detailed 3d render, artstation",
         "emoji": "✨",
+        "lora": None,
     },
 }
 
@@ -65,6 +86,7 @@ _pipe = None
 _device: Optional[str] = None
 _mock_mode: bool = False
 _ip_adapter_loaded: bool = False
+_loaded_lora: Optional[str] = None
 
 
 def _detect_device() -> str:
@@ -115,8 +137,7 @@ def init_pipeline(
         try:
             _pipe.enable_xformers_memory_efficient_attention()
         except Exception:
-            pass  # xformers not installed — fine
-    # Note: enable_attention_slicing is disabled to allow IP-Adapter attention processors
+            pass
 
     # ── Optional: IP-Adapter face consistency ──────────────────────────────
     if use_ip_adapter:
@@ -145,6 +166,41 @@ def _load_ip_adapter(scale: float = 0.40) -> None:
     except Exception as e:
         logger.warning(f"IP-Adapter failed to load: {e}. Continuing without it.")
         _ip_adapter_loaded = False
+
+
+def apply_lora(lora_file: Optional[str], lora_dir: str = "./models/loras", weight: float = 0.8) -> None:
+    """Load or unload a custom LoRA weight file into the pipeline."""
+    global _pipe, _loaded_lora
+
+    if _pipe is None or _mock_mode:
+        return
+
+    if lora_file == _loaded_lora:
+        return  # Already loaded
+
+    # If switching or removing LoRA, unload previous
+    if _loaded_lora is not None:
+        try:
+            _pipe.unload_lora_weights()
+            _loaded_lora = None
+            logger.info("Unloaded previous LoRA weights.")
+        except Exception as e:
+            logger.warning(f"Failed to unload LoRA: {e}")
+
+    if not lora_file:
+        return
+
+    full_path = os.path.join(lora_dir, lora_file)
+    if os.path.exists(full_path):
+        logger.info(f"Loading custom LoRA from '{full_path}' with weight={weight}…")
+        try:
+            _pipe.load_lora_weights(full_path)
+            _loaded_lora = lora_file
+            logger.info(f"Successfully loaded LoRA '{lora_file}'")
+        except Exception as e:
+            logger.error(f"Failed to load LoRA '{lora_file}': {e}")
+    else:
+        logger.info(f"LoRA file '{full_path}' not found — using base prompt styling.")
 
 
 def is_loaded() -> bool:
@@ -183,13 +239,16 @@ def cartoonize(
     style = STYLES[style_key]
     prompt = f"portrait, {style['prompt_modifier']}"
 
-    # ── Mock mode ────────────────────────────────────────────────────────────
+    # ── Mock mode ────────────────────────────────----------------────────────
     if _mock_mode:
         return _mock_cartoonize(image, style_key)
 
-    # ── Real inference ───────────────────────────────────────────────────────
+    # ── Real inference ────────────────────────────────----------------───────
     if _pipe is None:
         raise RuntimeError("Pipeline not initialized. Call init_pipeline() first.")
+
+    # Apply custom LoRA if applicable
+    apply_lora(style.get("lora"))
 
     img = image.convert("RGB").resize((512, 512), Image.LANCZOS)
 
@@ -219,11 +278,13 @@ def _mock_cartoonize(image: Image.Image, style_key: str) -> Image.Image:
     img = image.convert("RGB").resize((512, 512), Image.LANCZOS)
 
     style_filters = {
-        "disney": lambda i: ImageEnhance.Color(i.filter(ImageFilter.SMOOTH_MORE)).enhance(1.8),
-        "anime":  lambda i: ImageEnhance.Sharpness(i.filter(ImageFilter.EDGE_ENHANCE_MORE)).enhance(2.0),
-        "ghibli": lambda i: ImageEnhance.Brightness(i.filter(ImageFilter.GaussianBlur(1))).enhance(1.1),
-        "comic":  lambda i: ImageEnhance.Contrast(i.filter(ImageFilter.EDGE_ENHANCE_MORE)).enhance(1.5),
-        "pixar":  lambda i: ImageEnhance.Color(i.filter(ImageFilter.SMOOTH)).enhance(2.2),
+        "disney":     lambda i: ImageEnhance.Color(i.filter(ImageFilter.SMOOTH_MORE)).enhance(1.8),
+        "anime":      lambda i: ImageEnhance.Sharpness(i.filter(ImageFilter.EDGE_ENHANCE_MORE)).enhance(2.0),
+        "arcane":     lambda i: ImageEnhance.Contrast(ImageEnhance.Color(i).enhance(2.2)).enhance(1.6),
+        "claymation": lambda i: ImageEnhance.Brightness(i.filter(ImageFilter.SMOOTH_MORE)).enhance(1.15),
+        "ghibli":     lambda i: ImageEnhance.Brightness(i.filter(ImageFilter.GaussianBlur(1))).enhance(1.1),
+        "comic":      lambda i: ImageEnhance.Contrast(i.filter(ImageFilter.EDGE_ENHANCE_MORE)).enhance(1.5),
+        "pixar":      lambda i: ImageEnhance.Color(i.filter(ImageFilter.SMOOTH)).enhance(2.2),
     }
 
     fn = style_filters.get(style_key, lambda i: i)
