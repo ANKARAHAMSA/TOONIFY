@@ -20,42 +20,42 @@ STYLES: dict[str, dict] = {
         "key": "disney",
         "label": "Modern Disney",
         "description": "Vibrant, expressive Disney animation style",
-        "prompt_modifier": "modern disney style, cartoon, vibrant colors, expressive, smooth shading, high quality",
+        "prompt_modifier": "modern disney animation style, 3d digital artwork, expressive character, vibrant colors, smooth shading, cinematic lighting, masterpiece",
         "emoji": "🏰",
     },
     "anime": {
         "key": "anime",
         "label": "Anime",
         "description": "Clean, detailed Japanese anime aesthetic",
-        "prompt_modifier": "anime style, detailed, studio quality, clean lines, cel shading, beautiful",
+        "prompt_modifier": "anime style, studio quality, detailed eyes, clean lines, cel shaded, makoto shinkai aesthetic, masterpiece",
         "emoji": "⛩️",
     },
     "ghibli": {
         "key": "ghibli",
         "label": "Studio Ghibli",
         "description": "Soft, painterly Ghibli-inspired artwork",
-        "prompt_modifier": "studio ghibli style, painted, whimsical, soft colors, hand-drawn, miyazaki",
+        "prompt_modifier": "studio ghibli style, painted, whimsical, soft colors, hand-drawn, miyazaki art, anime background",
         "emoji": "🌿",
     },
     "comic": {
         "key": "comic",
         "label": "Comic Book",
         "description": "Bold lines and vibrant comic book panels",
-        "prompt_modifier": "comic book style, bold outlines, halftone, vibrant colors, dynamic, pop art",
+        "prompt_modifier": "comic book illustration style, bold black ink outlines, halftone patterns, vibrant colors, dynamic pop art, Marvel comic style",
         "emoji": "💥",
     },
     "pixar": {
         "key": "pixar",
         "label": "Pixar 3D",
         "description": "Warm, expressive Pixar-style 3D look",
-        "prompt_modifier": "pixar 3d animation style, cute, detailed, warm lighting, subsurface scattering",
+        "prompt_modifier": "pixar 3d animation style, cute character, warm lighting, subsurface scattering, detailed 3d render, artstation",
         "emoji": "✨",
     },
 }
 
 NEGATIVE_PROMPT = (
     "ugly, blurry, low quality, deformed, disfigured, extra limbs, "
-    "watermark, text, nsfw, realistic photo"
+    "watermark, text, nsfw, realistic photo, photorealistic, 3d scan, grain, noise"
 )
 
 # ---------------------------------------------------------------------------
@@ -83,17 +83,10 @@ def init_pipeline(
     model_path: str,
     mock: bool = False,
     use_ip_adapter: bool = False,
-    ip_adapter_scale: float = 0.7,
+    ip_adapter_scale: float = 0.40,
 ) -> None:
     """
     Load the SD img2img pipeline into memory. Call once at startup.
-
-    Args:
-        model_path:       Local path or HF repo ID for the base model.
-        mock:             If True, use PIL filters only (no GPU required).
-        use_ip_adapter:   If True, load IP-Adapter face consistency model on top.
-        ip_adapter_scale: Strength of face identity lock (0.0–1.0).
-                          0.4 = artistic, 0.7 = balanced, 0.9 = strict face lock.
     """
     global _pipe, _device, _mock_mode, _ip_adapter_loaded
 
@@ -123,7 +116,7 @@ def init_pipeline(
             _pipe.enable_xformers_memory_efficient_attention()
         except Exception:
             pass  # xformers not installed — fine
-    _pipe.enable_attention_slicing()
+    # Note: enable_attention_slicing is disabled to allow IP-Adapter attention processors
 
     # ── Optional: IP-Adapter face consistency ──────────────────────────────
     if use_ip_adapter:
@@ -132,7 +125,7 @@ def init_pipeline(
     logger.info("Pipeline loaded successfully.")
 
 
-def _load_ip_adapter(scale: float = 0.7) -> None:
+def _load_ip_adapter(scale: float = 0.40) -> None:
     """Load IP-Adapter face model on top of the existing pipeline."""
     global _ip_adapter_loaded
 
@@ -176,32 +169,19 @@ def get_ip_adapter_loaded() -> bool:
 def cartoonize(
     image: Image.Image,
     style_key: str,
-    strength: float = 0.72,
-    guidance_scale: float = 7.5,
+    strength: float = 0.70,
+    guidance_scale: float = 6.5,
     num_steps: int = 30,
     face_image: Optional[Image.Image] = None,
 ) -> Image.Image:
     """
     Run img2img cartoonization.
-
-    Args:
-        image:         The photo to cartoonize.
-        style_key:     One of the STYLES keys.
-        strength:      img2img denoising strength (0.0–1.0).
-        guidance_scale: CFG scale.
-        num_steps:     Inference steps.
-        face_image:    Optional face reference for IP-Adapter face lock.
-                       If provided and IP-Adapter is loaded, preserves face identity.
-
-    Returns:
-        PIL Image (512×512 JPEG-ready).
     """
     if style_key not in STYLES:
         raise ValueError(f"Unknown style '{style_key}'. Valid: {list(STYLES)}")
 
     style = STYLES[style_key]
-    gender_hint = "male character, " if face_image is not None else ""
-    prompt = f"portrait, {gender_hint}{style['prompt_modifier']}, masterpiece, best quality"
+    prompt = f"portrait, {style['prompt_modifier']}"
 
     # ── Mock mode ────────────────────────────────────────────────────────────
     if _mock_mode:
@@ -213,7 +193,6 @@ def cartoonize(
 
     img = image.convert("RGB").resize((512, 512), Image.LANCZOS)
 
-    # Build kwargs — add ip_adapter_image only when both conditions are met
     kwargs: dict = {
         "prompt": prompt,
         "negative_prompt": NEGATIVE_PROMPT,
@@ -227,11 +206,6 @@ def cartoonize(
         face_img = face_image.convert("RGB").resize((512, 512), Image.LANCZOS)
         kwargs["ip_adapter_image"] = face_img
         logger.info("Running with IP-Adapter face lock.")
-    elif face_image is not None and not _ip_adapter_loaded:
-        logger.warning(
-            "face_image provided but IP-Adapter not loaded "
-            "(set USE_IP_ADAPTER=true to enable). Ignoring face lock."
-        )
 
     result = _pipe(**kwargs).images[0]
     return result
