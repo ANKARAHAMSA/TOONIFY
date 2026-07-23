@@ -1,20 +1,28 @@
-# TOONIFY Backend — Pinned Requirements
-# Render free tier uses MOCK_MODE=true (no GPU inference)
-# For GPU inference, use the Colab notebook or a GPU cloud provider
+# TOONIFY Backend — Render Requirements
+# Render runs in MOCK_MODE=true (OpenCV cartoon, no GPU needed)
+# Heavy ML packages (torch, diffusers) are NOT installed here — too large for 512MB RAM
+# For real SD/GAN inference → use HuggingFace Spaces (spaces/app.py)
 
+# ── Core API ──────────────────────────────────────────────────────────────
 fastapi==0.111.0
 uvicorn[standard]==0.30.1
 python-multipart==0.0.9
-Pillow==10.4.0
-setuptools>=70.0.0
 python-dotenv==1.0.1
 pydantic==2.7.1
+setuptools>=70.0.0
+
+# ── Image processing (mock cartoon, runs on CPU) ───────────────────────────
+Pillow==10.4.0
+opencv-python-headless==4.9.0.80
+numpy>=1.26.0
+
+# ── HuggingFace Spaces proxy client (optional, for when HF_SPACES_URL is set) ─
 gradio_client>=1.3.0
 
-# SD inference (optional — only used when MOCK_MODE=false)
-# These are heavy; Render free tier will skip loading them in mock mode
-torch>=2.1.0
-diffusers>=0.27.0
-transformers>=4.40.0
-accelerate>=0.30.0
-safetensors>=0.4.3
+# ── GPU inference (NOT installed on Render — install locally or on HF Spaces) ──
+# To enable real SD inference locally:  pip install torch diffusers transformers accelerate safetensors
+# torch>=2.1.0
+# diffusers>=0.27.0
+# transformers>=4.40.0
+# accelerate>=0.30.0
+# safetensors>=0.4.3
